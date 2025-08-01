@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contador de Acessos - Página Vermelha</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #ff0000 0%, #cc0000 50%, #990000 100%);
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 60px 40px;
+            border-radius: 30px;
+            box-shadow: 
+                0 25px 50px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            position: relative;
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(1deg); }
+        }
+        
+        .counter-label {
+            color: white;
+            font-size: 1.8rem;
+            font-weight: 300;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        
+        .counter-display {
+            color: white;
+            font-size: 6rem;
+            font-weight: 900;
+            text-shadow: 
+                3px 3px 0px rgba(0, 0, 0, 0.8),
+                6px 6px 20px rgba(0, 0, 0, 0.5);
+            margin: 30px 0;
+            line-height: 1;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.9; }
+        }
+        
+        .stats {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1rem;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+            margin-top: 25px;
+        }
+        
+        .stats-item {
+            margin: 8px 0;
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            display: inline-block;
+            min-width: 200px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .reset-info {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.8rem;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .loading {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 2rem;
+            animation: loading 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes loading {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        /* Efeito de partículas no fundo */
+        .particle {
+            position: fixed;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particle-float 8s linear infinite;
+        }
+        
+        @keyframes particle-float {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="counter-label">Acessos à Página</div>
+        <div class="counter-display" id="counter">
+            <div class="loading">●●●</div>
+        </div>
+        <div class="stats" id="stats">
+            <div class="stats-item" id="today-count">Hoje: Carregando...</div>
+            <div class="stats-item" id="session-info">Sessão: Carregando...</div>
+        </div>
+    </div>
+    
+    <div class="reset-info">
+        Ctrl+R para resetar contador (apenas para testes)
+    </div>
+
+    <script>
+        // Sistema de contador avançado
+        class AdvancedCounter {
+            constructor() {
+                this.totalKey = 'redpage_total_visits';
+                this.sessionKey = 'redpage_session_visits';
+                this.lastVisitKey = 'redpage_last_visit';
+                this.dailyPrefix = 'redpage_daily_';
+                
+                this.init();
+            }
+            
+            init() {
+                this.createParticles();
+                this.updateCounter();
+                this.setupEventListeners();
+            }
+            
+            getCurrentDate() {
+                return new Date().toDateString();
+            }
+            
+            getCurrentTime() {
+                return new Date().toLocaleTimeString('pt-BR');
+            }
+            
+            updateCounter() {
+                try {
+                    // Incrementar contador total
+                    let totalCount = parseInt(localStorage.getItem(this.totalKey) || '0') + 1;
+                    localStorage.setItem(this.totalKey, totalCount.toString());
+                    
+                    // Contador da sessão (resetado quando o navegador é fechado)
+                    let sessionCount = parseInt(sessionStorage.getItem(this.sessionKey) || '0') + 1;
+                    sessionStorage.setItem(this.sessionKey, sessionCount.toString());
+                    
+                    // Contador diário
+                    const today = this.getCurrentDate();
+                    const todayKey = this.dailyPrefix + today;
+                    let todayCount = parseInt(localStorage.getItem(todayKey) || '0') + 1;
+                    localStorage.setItem(todayKey, todayCount.toString());
+                    
+                    // Atualizar última visita
+                    const currentTime = new Date().toISOString();
+                    localStorage.setItem(this.lastVisitKey, currentTime);
+                    
+                    // Exibir os dados
+                    this.displayCounter(totalCount, todayCount, sessionCount);
+                    
+                    console.log(`📊 Estatísticas de Visitas:
+- Total: ${totalCount}
+- Hoje: ${todayCount}  
+- Nesta sessão: ${sessionCount}
+- Horário: ${this.getCurrentTime()}`);
+                    
+                } catch (error) {
+                    console.error('Erro ao atualizar contador:', error);
+                    this.displayError();
+                }
+            }
+            
+            displayCounter(total, today, session) {
+                // Animar a mudança do número
+                const counterEl = document.getElementById('counter');
+                const statsEl = document.getElementById('stats');
+                
+                counterEl.innerHTML = `<div style="font-size: 6rem; font-weight: 900;">${total}</div>`;
+                
+                statsEl.innerHTML = `
+                    <div class="stats-item">Hoje: ${today} ${today === 1 ? 'visita' : 'visitas'}</div>
+                    <div class="stats-item">Nesta sessão: ${session} ${session === 1 ? 'acesso' : 'acessos'}</div>
+                `;
+                
+                // Efeito de destaque no número
+                counterEl.style.animation = 'none';
+                setTimeout(() => {
+                    counterEl.style.animation = 'pulse 2s ease-in-out infinite';
+                }, 100);
+            }
+            
+            displayError() {
+                document.getElementById('counter').innerHTML = `
+                    <div style="font-size: 3rem; color: #ffcccc;">
+                        ⚠️<br>Erro
+                    </div>
+                `;
+                document.getElementById('stats').innerHTML = `
+                    <div class="stats-item">Erro ao carregar estatísticas</div>
+                `;
+            }
+            
+            resetCounter() {
+                if (confirm('🔄 Resetar todas as estatísticas de visita?\n\nIsso irá:\n- Zerar contador total\n- Limpar histórico diário\n- Resetar sessão atual')) {
+                    // Limpar todos os dados relacionados
+                    localStorage.removeItem(this.totalKey);
+                    localStorage.removeItem(this.lastVisitKey);
+                    sessionStorage.clear();
+                    
+                    // Limpar contadores diários
+                    Object.keys(localStorage).forEach(key => {
+                        if (key.startsWith(this.dailyPrefix)) {
+                            localStorage.removeItem(key);
+                        }
+                    });
+                    
+                    // Atualizar display
+                    this.updateCounter();
+                    alert('✅ Contador resetado com sucesso!');
+                }
+            }
+            
+            setupEventListeners() {
+                document.addEventListener('keydown', (event) => {
+                    if (event.key.toLowerCase() === 'r' && event.ctrlKey) {
+                        event.preventDefault();
+                        this.resetCounter();
+                    }
+                });
+                
+                // Easter egg: clique triplo no contador para mostrar detalhes
+                let clickCount = 0;
+                document.getElementById('counter').addEventListener('click', () => {
+                    clickCount++;
+                    if (clickCount === 3) {
+                        this.showDetailedStats();
+                        clickCount = 0;
+                    }
+                    setTimeout(() => clickCount = 0, 1000);
+                });
+            }
+            
+            showDetailedStats() {
+                const lastVisit = localStorage.getItem(this.lastVisitKey);
+                const totalVisits = localStorage.getItem(this.totalKey) || '0';
+                
+                alert(`📈 ESTATÍSTICAS DETALHADAS
+                
+🔢 Total de visitas: ${totalVisits}
+📅 Última visita: ${lastVisit ? new Date(lastVisit).toLocaleString('pt-BR') : 'Primeira visita'}
+🌐 Navegador: ${navigator.userAgent.split(' ')[0]}
+📱 Plataforma: ${navigator.platform}
+⏰ Visita atual: ${new Date().toLocaleString('pt-BR')}`);
+            }
+            
+            createParticles() {
+                const createParticle = () => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    
+                    // Tamanho aleatório
+                    const size = Math.random() * 6 + 2;
+                    particle.style.width = size + 'px';
+                    particle.style.height = size + 'px';
+                    
+                    // Posição aleatória
+                    particle.style.left = Math.random() * 100 + '%';
+                    
+                    // Duração aleatória
+                    particle.style.animationDuration = (Math.random() * 8 + 5) + 's';
+                    
+                    document.body.appendChild(particle);
+                    
+                    // Remover após a animação
+                    setTimeout(() => {
+                        if (particle.parentNode) {
+                            particle.parentNode.removeChild(particle);
+                        }
+                    }, 13000);
+                };
+                
+                // Criar partículas periodicamente
+                setInterval(createParticle, 800);
+                
+                // Criar algumas iniciais
+                for (let i = 0; i < 5; i++) {
+                    setTimeout(createParticle, i * 200);
+                }
+            }
+        }
+        
+        // Inicializar quando a página carregar
+        window.addEventListener('load', () => {
+            new AdvancedCounter();
+        });
+        
+        // Adicionar efeito de fade-in na página
+        document.addEventListener('DOMContentLoaded', () => {
+            document.body.style.opacity = '0';
+            document.body.style.transition = 'opacity 1s ease-in-out';
+            
+            setTimeout(() => {
+                document.body.style.opacity = '1';
+            }, 100);
+        });
+    </script>
+</body>
+</html>
